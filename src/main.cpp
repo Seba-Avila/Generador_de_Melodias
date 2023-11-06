@@ -103,13 +103,14 @@ void Microfono(); //Funcion que ejecuta la accion del Detector de notas.
 
 void setup() {
   Serial.begin(115200);
+  pinMode(25, OUTPUT);  //Salida para LED indicador de Encendido
   pinMode(27, OUTPUT);  //Salida para LED indicador del modo Generador
   pinMode(12, OUTPUT);  //Salida para LED indicador del modo Detector
 
   SerialBT.begin("ESP32_Generador"); //Nombre del dispositivo Bluetooth
   Serial.println("The device started, now you can pair it with bluetooth!"); //Mensaje de aviso
 
-  
+  digitalWrite(25, HIGH); //Una vez inicia el BT, enciendo el LED, quedando activado
   
   
   /*Más aclaraciones en archivo README*/
