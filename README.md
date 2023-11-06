@@ -1,4 +1,4 @@
-﻿# Prototipo_Generador_de_Melodias
+﻿# Generador_de_Melodias
 
 -MUESTRAS:
 
@@ -6,10 +6,10 @@ Las muestras fueron obtenidas del siguiente código, aplicable para todas las fr
 
 ```
 float F1 = 44;        //Frecuencia de la nota
-double Fs = 8800;     //Fs=Frecuencia nota*muestras          
-int n1 = 200;         //numero de muestras
+double Fs = 2200;     //Fs=Frecuencia nota*muestras          
+int n1 = 50;         //numero de muestras
 double t=0;           //instante de muestra
-byte samples1[200];   //vector donde guardar las muestras
+byte samples1[50];   //vector donde guardar las muestras
 
 for (int m = 0; m < n1; m++){
     t = (double) ((m/Fs)*1000);                                       //multiplico el valor de t ya que, al ser tan pequeño, sus decimales se pierden y figura como 0.
@@ -24,7 +24,7 @@ Las muestras fueron guardadas en la memoria flash, de programa, con tal de no oc
 
 -CONFIGURACION PWM:
 
-Habiendo verificado las frecuencias a la que mejor trabajan las PWM de las notas (principalmente a la hora de filtrarlas), determinamos que, al configurarlas, hacerlo con una frecuencia unas 15 veces mayor a la de muestreo otorgaba resultados óptimos para el filtro que construimos. Para iniciar, elegimos notas unicamente de la primer octava, con frecuencias de 32,70 Hz a 61,74 Hz. Redondeando los valores, las frecuencias de muestreo correspondientes van de 6600 Hz a 12400 Hz, mientras que las de PWM van de 99000 Hz a 186000 Hz. Por eso, utilizando un canal a 200000 Hz tenemos más que suficiente velocidad para recorrer las muestras de todas las notas. La resolución es la misma que la de muestreo, 8 bits.
+La frecuencia de muestreo está dada en base a la cantidad de muestras establecidas para la señal a muestrear (la senoidal generada anteriormente). Inicialmente elegimos un número considerable de muestras (primero 500, luego 400 y luego 200) para asegurarnos de que la representación de la señal sería fiel a la original. Sin embargo, una cantidad grande de muestras conlleva una gran frecuencia de muestreo, y para lograr representar las muestras de manera correcta a traves de la PWM es necesario que, en el tiempo que tarda en sucederse una muestra a otra, la señal PWM sea capaz de realizar varios ciclos con el ciclo de trabajo indicado por la muestra con tal de que el valor medio resultante sea perceptible por la carga. Esto implica que la PWM sea considerablemente grande respecto de la frecuencia de muestreo (mínimamente, el doble). Utilizando 50 muestras para notas de la segunda octava cuyas frecuencias van desde los 65 Hz a los 123 Hz (obteniendo frecuencias de muestreo de entre 3.25 KHz a 6.15 KHz), obtuvimos que una PWM de 20 KHz sería suficiente para representar todas las señales, evitando, además, problemas con la velocidad de conmutación de los componentes de potencia para el motor (problema que se nos habia presentado en anteriores versiones, cuando nuestras frecuencias de muestreo eran muy altas y, por ende, las PWM que comandaban al motor también).
 
 -LECTURA DE DATOS:
 
@@ -33,7 +33,8 @@ La variable cache guarda como dato el numero de bytes que llegan.
 
 -SENOIDALES Y RECORRIDO DE MUESTRAS:
 
-Al entrar a la funcion propia de cada nota, en todos los casos voy a ingresar en un bucle que no se romperá a menos que se reciba un dato desde la app. Ese dato puede ser el caracter de otra nota o el caracter V para la vuelta a la pantalla principal, y será leído en la funcion principal del Generador, ya que: si es V, el bucle dara una vuelta más y se cerrará; si es una nota, entrará a algun otro caso del switch; si es otro caracter, generado por el boton de pausa, el dato sera leído, no se romperá el bucle ni entrará a ningún caso del switch y, como se limpia el buffer, volverá a quedarse en espera de un dato que ejecute una acción.
+A las funciones encargadas de representar las senoidales se puede acceder tanto del modo Generador, como del modo Detector. Al entrar a la funcion propia de cada nota, en todos los casos voy a ingresar en un bucle que no se romperá a menos que se reciba un dato desde la app. Desde el modo Generador sucede lo siguiente: ese dato puede ser el caracter de otra nota o el caracter V para la vuelta a la pantalla principal, y será leído en la funcion principal del Generador, ya que: si es V, el bucle dara una vuelta más y se cerrará; si es una nota, entrará a algun otro caso del switch; si es otro caracter, generado por el boton de pausa, el dato sera leído, no se romperá el bucle ni entrará a ningún caso del switch y, como se limpia el buffer, volverá a quedarse en espera de un dato que ejecute una acción. Desde el modo Detector: ese dato puede ser V, P o p: si es V, se corta la salida al motor, se rompe el bucle en el que se aplica la FFT, y se rompe el bucle principal que pide por el inicio del micrófono; si es P, se corta la salida al motor, se rompe el bucle en el que se aplica la FFT, pero se queda en el bucle principal pidiendo por la reactivación del micrófono para medir; si es p, significa que se presiono el boton de parada del motor (que arranca luego de detectar una nota; mientras este activo el motor, la señal del micrófono no se procesa), por lo que lo unico que realiza es el corte de la salida al motor, ya que, una vez leido el dato, el buffer se limpia y, al ser un caracter que no corresponde con ninguna de las condiciones que rompen el bucle, simplemente vuelve a entrar para seguir procesando la señal de audio.
 
-Recorremos el vector de muestras con un for, reproduciendo la PWM con un ciclo de trabajo correspondiente a cada muestra, agregando un delay equivalente a un ciclo de la frecuencia de muestreo menos 7 uS (que toma en ejecutarse la función ledcWrite):
-Delay = (1/Fmuestreo) - 7x10^(-6) = (1/(Fnota*200)) - 7x10^(-6)
+
+Para la representación de las senoidales, recorremos el vector de muestras con un for, reproduciendo la PWM con un ciclo de trabajo correspondiente a cada muestra, agregando un delay equivalente a un ciclo de la frecuencia de muestreo menos 7 uS (tiempo que toma en ejecutarse la función ledcWrite):
+Delay = (1/Fmuestreo) - 7x10^(-6) = (1/(Fnota*50)) - 7x10^(-6)
